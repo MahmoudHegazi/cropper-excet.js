@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>JavaScript Strings</h1>
+<h2><input type="file" id="imageLoader" name="imageLoader"/></h2>
+<!--  style="max-width:800px;max-height:600px;overflow:auto;"-->
+<div style="position:relative;">
+<!-- layers canvas absolute + z-index -->
+<canvas id="canvasid" width="200" height="200">cropper not supported in your browser try another one or update this.</canvas>
+
+<canvas style="position:absolute;z-index:100;left:0;top:0;background:transparent;border:1px solid black;" id="cropperid" width="200" height="200">cropper not supported in your browser try another one or update this.</canvas>
+
+</div>
+
+<script>
+class ImageCroper {
+    constructor(canvasId, cropperCanvasId, fileUploadId) {
+        const canvas = (canvasId && document.getElementById(canvasId)) ? document.getElementById(canvasId) : null;
+        const cropperCanvas = (cropperCanvasId && document.getElementById(cropperCanvasId)) ? document.getElementById(cropperCanvasId) : null;
+        const fileUploader = (fileUploadId && document.getElementById(fileUploadId)) ? document.getElementById(fileUploadId) : null;
+        if (canvas && cropperCanvas && fileUploader) {
+            this._canvasId = canvasId;
+            this._cropperCanvasId = cropperCanvasId;
+            this._fileUploadId = fileUploadId;
+            this._canvas = canvas;
+            this._ctx = this.canvas.getContext("2d");
+            this._cropperCanvas = cropperCanvas;
+            this._cropperCtx = this.cropperCanvas.getContext("2d");
+            this._fileUploader = fileUploader;
+            this.cropingActionIndex = 0;
+            this.croperRectX1 = -1;
+            this.croperRectY1 = -1;
+            this.croperRectX2 = -1;
+            this.croperRectY2 = -1;
+            // croper dimensions squares
+            this.dTopLeftX = -1;
+            this.dTopLeftY = -1;
+            this.dTopRightX = -1;
+            this.dTopRightY = -1;
+            this.dBottomRightX = -1;
+            this.dBottomRightY = -1;
+            this.dBottomLeftX = -1;
+            this.dBottomLeftY = -1;
+            
+            this.frameId = null;
+            
+            this.dWidth = 10;
+            this.dHeight = 10;
+            this.BtnCx = this.dWidth / 2;
+            this.BtnCy = this.dHeight / 2;
+            // croper style
+            this.croperColor = 'blue';
+            // croper dimensions squares (u can control size of dimensions squares)
+            this.dColor = 'white';
+            this.dBackground = 'blue';
+            this.addEvents();
+        } else {
+            throw new Error('missing one of two required canvas or the file upload input id or invalid args');
+        }
+    }
+    get canvasId() {
+        return this._canvasId;
+    }
+    get cropperCanvasId() {
+        return this._cropperCanvasId;
+    }
+    get fileUploadId() {
+        return this._fileUploadId;
+    }
+    get canvas() {
+        return this._canvas;
+    }
+    get ctx() {
+        return this._ctx;
+    }
+    get cropperCanvas() {
+        return this._cropperCanvas;
+    }
+    get cropperCtx() {
+        return this._cropperCtx;
+    }
+    get fileUploader() {
+        return this._fileUploader;
+    }
+    draw(img) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.canvas.width = img.naturalWidth;
+        this.canvas.height = img.naturalHeight;
+        this.cropperCtx.clearRect(0, 0, this.cropperCanvas.width, this.cropperCanvas.height);
+        this.cropperCanvas.width = img.naturalWidth;
+        this.cropperCanvas.height = img.naturalHeight;
+        this.ctx.drawImage(img, 0, 0, img.width, img.height);
+    }
+    loadImageByFileUpload(e) {
+        const file = e.currentTarget.files[0];
+        if (file) {
+            this.resetCropperAction();
+            this.file = file;
+            this.img = new Image();
+            this.tempURL = URL.createObjectURL(file);
+            this.img.src = this.tempURL;
+            this.img.onload = () => {
+                this.draw(this.img);
+                URL.revokeObjectURL(this.tempURL);
+            };
+        }
+        console.log(imageCropper);
+        return false;
+    }
+    getCroperXY(clientX, clientY) {
+        // Get the canvas's position relative to the document
+        const rect = this.canvas.getBoundingClientRect();
+        // Calculate the mouse position relative to the canvas
+        return {
+            x: (clientX - rect.left),
+            y: (clientY - rect.top)
+        };
+    }
+    resetCropperAction() {
+        this.cropingActionIndex = 0;
+        /* this 4 demnsion of action recived down, move, relase Clientx,Clienty */
+        this.croperRectX1 = -1;
+        this.croperRectY1 = -1;
+        this.croperRectX2 = -1;
+        this.croperRectY2 = -1;
+        /* final drawed croper */
+        this.cropperX = -1;
+        this.cropperY = -1;
+        this.cropperX2 = -1;
+        this.cropperY2 = -1;
+        /* croper btns */
+        this.dTopLeftX = -1;
+        this.dTopLeftY = -1;
+        this.dTopRightX = -1;
+        this.dTopRightY = -1;
+        this.dBottomRightX = -1;
+        this.dBottomRightY = -1;
+        this.dBottomLeftX = -1;
+        this.dBottomLeftY = -1;
+        
+        if (this.frameId) {
+           cancelAnimationFrame(this.frameId);
+        }
+        this.frameId = null;
+        this.emptyCroper();
+    }
+    mouseDownCroper(e) {
+        /* Cropper First pixel */
+        if (this.cropingActionIndex === 0 || this.cropingActionIndex === 4) {
+            const canvasXY = this.getCroperXY(e.clientX, e.clientY);
+            const isActionOnCroper = this.isWithinCroper(canvasXY);
+            const whichBtnClicked = this.getWhichBtn(canvasXY);
+            if (!isActionOnCroper && whichBtnClicked === '') {
+                /*Croper action means user created the croper and new click not need to renew croper as he need make action on the croper like resize or move*/
+                // clean before start
+                //alert(whichBtnClicked);
+                this.resetCropperAction();
+                // first step done
+                this.cropingActionIndex = 1;
+                this.croperRectX1 = parseInt(canvasXY.x);
+                this.croperRectY1 = parseInt(canvasXY.y);
+            } else {
+                return false;
+            }
+        }
+        return false;
+    }
+    mouseMoveCroper(e) {
+        // sometimes u may on any move resize shape but not now
+        if (this.cropingActionIndex === 1 || this.cropingActionIndex === 2) {
+            this.cropingActionIndex = 2;
+            console.log("now user clicked and moved");
+            const canvasXY = this.getCroperXY(e.clientX, e.clientY);
+            this.croperRectX2 = parseInt(canvasXY.x);
+            this.croperRectY2 = parseInt(canvasXY.y);
+            if (!this.frameId) {
+                this.frameId = requestAnimationFrame(()=>{
+                   const res = this.shouldInitalCroper();
+                   this.frameId = null;
+                   return res;
+                });
+            }
+        } else if (this.cropingActionIndex === 4) {
+            // if react created check mouse within it
+            const canvasXY = this.getCroperXY(e.clientX, e.clientY);
+            document.body.style.cursor = this.getMovingCursor(canvasXY);
+        }
+        return false;
+    }
+    mouseRealseCroper(e) {
+        /* rectangle full size */
+        const canvasXY = this.getCroperXY(e.clientX, e.clientY);
+        const whichBtnClicked = this.getWhichBtn(canvasXY);
+        if (this.cropingActionIndex === 2) {
+            this.cropingActionIndex = 3;
+            this.croperRectX2 = parseInt(canvasXY.x);
+            this.croperRectY2 = parseInt(canvasXY.y);
+            this.shouldInitalCroper();
+            document.body.style.cursor = '';
+        } else if (this.cropingActionIndex != 2 && !this.isWithinCroper(canvasXY) && whichBtnClicked === '') {
+            /* this make the clear on click after draw it */
+            this.resetCropperAction();
+        }
+        return false;
+    }
+    isCroperNumsValid() {
+        const allAreNums = (!isNaN(this.croperRectX1) && !isNaN(this.croperRectY1) && !isNaN(this.croperRectX2) && !isNaN(this.croperRectY2));
+        // if any number not valid or ready it value -1
+        const allNumsReady = ([this.croperRectX1, this.croperRectY1, this.croperRectX2, this.croperRectY2].filter((a) => (a != Math.abs(a))).length === 0);
+        return (allAreNums && allNumsReady);
+    }
+    isWithinCroper(canvasXY) {
+        // check if user want do action on croper after created like resize or move and prevent recerating new croper if mousedown within created croper
+        const inCroperWidth = (canvasXY.x >= this.cropperX) && canvasXY.x <= (this.cropperWidth + this.cropperX);
+        const inCroperHeight = (canvasXY.y >= this.cropperY) && canvasXY.y <= (this.cropperHeight + this.cropperY);
+        if (this.cropingActionIndex === 4 && inCroperWidth && inCroperHeight) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    shouldInitalCroper() {
+        if ((this.cropingActionIndex === 2 || this.cropingActionIndex === 3) && this.isCroperNumsValid()) {
+            this.setCroperData();
+            this.drawCroper();
+            if (this.cropingActionIndex === 3) {
+                // only on mouse relase set it ready for restart
+                this.cropingActionIndex = 4;
+            }
+        }
+        return false;
+    }
+
+    setCroperData() {
+        if (this.cropingActionIndex > 1 && this.isCroperNumsValid()) {
+            /* this action always redrawing only even resizing is redrwaing but thanks layers canvas it not redraw the full app or game in other layers */
+            /* note it no care where start from left or right cus smallest and biggest */
+            const smallestX1 = Math.max(0, (Math.min(...[this.croperRectX1, this.croperRectX2])));
+            const biggestX2 = Math.min(this.cropperCanvas.width, (Math.max(...[this.croperRectX1, this.croperRectX2])));
+            const smallestY1 = Math.max(0, Math.min(...[this.croperRectY1, this.croperRectY2]));
+            const biggestY2 = Math.min((Math.max(...[this.croperRectY1, this.croperRectY2])), this.cropperCanvas.height);
+            this.cropperX = smallestX1;
+            this.cropperY = smallestY1;
+            this.cropperWidth = biggestX2 - smallestX1;
+            this.cropperHeight = biggestY2 - smallestY1;
+            this.cropperX2 = this.cropperX + this.cropperWidth;
+            this.cropperY2 = this.cropperY + this.cropperHeight;
+            // alert("hi");
+        }
+    }
+    addCroppingEffect() {
+        //this.cropperCtx.globalAlpha = 0.5; (transparent for all)
+        this.cropperCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.cropperCtx.fillRect(0, 0, this.cropperCanvas.width, this.cropperCanvas.width);
+        // Change composite mode to "cut out" this will remove the prev filling when fill again also good to remove effect
+        this.cropperCtx.globalCompositeOperation = 'destination-out';
+        this.cropperCtx.fillRect(this.cropperX, this.cropperY, this.cropperWidth, this.cropperHeight);
+        
+        // reset back when complete;
+        this.cropperCtx.globalCompositeOperation = 'source-over';
+
+    }
+    getMovingCursor(canvasXY) {
+
+        // performance here important
+        const whichBtn = this.getWhichBtn(canvasXY);
+        if (whichBtn) {
+            let cursor = '';
+            switch (whichBtn) {
+                case 'topLeft':
+                    cursor = 'nw-resize';
+                    break;
+                case 'topRight':
+                    cursor = 'ne-resize';
+                    break;
+                case 'bottomRight':
+                    cursor = 'nw-resize';
+                    break;
+                case 'bottomLeft':
+                    cursor = 'ne-resize';
+                    break;
+                case 'topMiddle':
+                    cursor = 'n-resize';
+                    break;
+                case 'bottomMiddle':
+                    cursor = 'n-resize';
+                    break;
+                case 'middleRight':
+                    cursor = 'e-resize';
+                    break;
+                case 'middleLeft':
+                    cursor = 'e-resize';
+                    break;
+                default:
+                    break;
+            }
+            return cursor;
+        } else if (this.isWithinCroper(canvasXY)) {
+            // nested mouse enter
+            return 'grab';
+        } else {
+            return '';
+        }
+    }
+    getWhichBtn(canvasXY) {
+        /* this function do important thing big while it small it get the btn user on it*/
+        const inBtn1Width = (canvasXY.x >= this.dTopLeftX) && canvasXY.x <= (this.dWidth + this.dTopLeftX);
+        const inBtn1Height = (canvasXY.y >= this.dTopLeftY) && canvasXY.y <= (this.dHeight + this.dTopLeftY);
+        if (inBtn1Width && inBtn1Height) {
+            return 'topLeft';
+        }
+        
+        const inBtn2Width = (canvasXY.x >= this.dTopMiddleX) && canvasXY.x <= (this.dWidth + this.dTopMiddleX);
+        const inBtn2Height = (canvasXY.y >= this.dTopMiddleY) && canvasXY.y <= (this.dHeight + this.dTopMiddleY);
+        if (inBtn2Width && inBtn2Height) {
+            return 'topMiddle';
+        }
+        
+        const inBtn3Width = (canvasXY.x >= this.dTopRightX) && canvasXY.x <= (this.dWidth + this.dTopRightX);
+        const inBtn3Height = (canvasXY.y >= this.dTopRightY) && canvasXY.y <= (this.dHeight + this.dTopRightY);
+        if (inBtn3Width && inBtn3Height) {
+            return 'topRight';
+        }
+        
+        const inBtn4Width = (canvasXY.x >= this.dMiddleRightX) && canvasXY.x <= (this.dWidth + this.dMiddleRightX);
+        const inBtn4Height = (canvasXY.y >= this.dMiddleRightY) && canvasXY.y <= (this.dHeight + this.dMiddleRightY);
+        if (inBtn4Width && inBtn4Height) {
+            return 'middleRight';
+        }
+
+        const inBtn5Width = (canvasXY.x >= this.dBottomRightX) && canvasXY.x <= (this.dWidth + this.dBottomRightX);
+        const inBtn5Height = (canvasXY.y >= this.dBottomRightY) && canvasXY.y <= (this.dHeight + this.dBottomRightY);
+        if (inBtn5Width && inBtn5Height) {
+            return 'bottomRight';
+        }
+        
+        
+        const inBtn6Width = (canvasXY.x >= this.dBottomMidleX) && canvasXY.x <= (this.dWidth + this.dBottomMidleX);
+        const inBtn6Height = (canvasXY.y >= this.dBottomMidleY) && canvasXY.y <= (this.dHeight + this.dBottomMidleY);
+        if (inBtn6Width && inBtn6Height) {
+            return 'bottomMiddle';
+        }        
+        
+        const inBtn7Width = (canvasXY.x >= this.dBottomLeftX) && canvasXY.x <= (this.dWidth + this.dBottomLeftX);
+        const inBtn7Height = (canvasXY.y >= this.dBottomLeftY) && canvasXY.y <= (this.dHeight + this.dBottomLeftY);
+        if (inBtn7Width && inBtn7Height) {
+            return 'bottomLeft';
+        }
+        
+        
+        const inBtn8Width = (canvasXY.x >= this.dMiddleLeftX) && canvasXY.x <= (this.dWidth + this.dMiddleLeftX);
+        const inBtn8Height = (canvasXY.y >= this.dMiddleRightY) && canvasXY.y <= (this.dHeight + this.dMiddleRightY);
+        if (inBtn8Width && inBtn8Height) {
+            return 'middleLeft';
+        }
+        
+        return '';
+    }
+    addCroperBtns() {
+        const cw = this.cropperCanvas.width;
+        const ch = this.cropperCanvas.height;
+        const cWCenter = this.cropperWidth/2;
+        const cHCenter = this.cropperHeight/2;
+        
+        this.dTopLeftX = Math.min(cw, (Math.max(0, this.cropperX - this.BtnCx)));
+        this.dTopLeftY = Math.min(ch, (Math.max(0, this.cropperY - this.BtnCy)));
+        this.dTopRightX = Math.min(cw, (Math.max(0, this.cropperX2 - this.BtnCx)));
+        this.dTopRightY = Math.min(ch, (Math.max(0, this.cropperY - this.BtnCy)));
+        this.dBottomRightX = Math.min(cw, (Math.max(0, this.cropperX2 - this.BtnCx)));
+        this.dBottomRightY = Math.min(ch, (Math.max(0, this.cropperY2 - this.BtnCy)));
+        this.dBottomLeftX = Math.min(cw, (Math.max(0, this.cropperX - this.BtnCx)));
+        this.dBottomLeftY = Math.min(ch, (Math.max(0, this.cropperY2 - this.BtnCy)));
+        
+        /* height btns */
+        this.dTopMiddleX = Math.min(cw, (Math.max(0, (this.cropperX+cWCenter) - this.BtnCx)));
+        this.dTopMiddleY = Math.min(ch, (Math.max(0, this.cropperY - this.BtnCy)));
+        
+        this.dBottomMidleX = Math.min(cw, (Math.max(0, (this.cropperX+cWCenter) - this.BtnCx)));
+        this.dBottomMidleY = Math.min(ch, (Math.max(0, (this.cropperY2) - this.BtnCy)));
+        
+        /* width btns */
+        this.dMiddleLeftX = Math.min(cw, (Math.max(0, this.cropperX - this.BtnCx)));
+        this.dMiddleLeftY = Math.min(ch, (Math.max(0, (this.cropperY+cHCenter) - this.BtnCy)));
+        this.dMiddleRightX = Math.min(cw, (Math.max(0, (this.cropperX2) - this.BtnCx)));
+        this.dMiddleRightY = Math.min(ch, (Math.max(0, (this.cropperY+cHCenter) - this.BtnCy)));
+        
+        
+        
+        
+        
+        this.cropperCtx.beginPath();
+        this.cropperCtx.strokeStyle = this.dColor;
+        this.cropperCtx.fillStyle = this.dBackground;
+        this.cropperCtx.rect(this.dTopLeftX, this.dTopLeftY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dTopRightX, this.dTopRightY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dBottomRightX, this.dBottomRightY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dBottomLeftX, this.dBottomLeftY, this.dWidth, this.dHeight);
+
+
+        this.cropperCtx.rect(this.dTopMiddleX, this.dTopMiddleY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dBottomMidleX, this.dBottomMidleY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dMiddleLeftX, this.dMiddleLeftY, this.dWidth, this.dHeight);
+        this.cropperCtx.rect(this.dMiddleRightX, this.dMiddleRightY, this.dWidth, this.dHeight);
+        
+        
+        
+        /* Add fill color to created btns */
+        this.cropperCtx.fillRect(this.dTopLeftX, this.dTopLeftY, this.dWidth, this.dHeight);
+        this.cropperCtx.fillRect(this.dTopRightX, this.dTopRightY, this.dWidth, this.dHeight);
+        this.cropperCtx.fillRect(this.dBottomRightX, this.dBottomRightY, this.dWidth, this.dHeight);
+        this.cropperCtx.fillRect(this.dBottomLeftX, this.dBottomLeftY, this.dWidth, this.dHeight);
+        
+       this.cropperCtx.fillRect(this.dTopMiddleX, this.dTopMiddleY, this.dWidth, this.dHeight);
+       this.cropperCtx.fillRect(this.dBottomMidleX, this.dBottomMidleY, this.dWidth, this.dHeight);
+       this.cropperCtx.fillRect(this.dMiddleLeftX, this.dMiddleLeftY, this.dWidth, this.dHeight);
+       this.cropperCtx.fillRect(this.dMiddleRightX, this.dMiddleRightY, this.dWidth, this.dHeight);      
+        
+        this.cropperCtx.stroke();
+    }
+    drawCroper() {
+        this.emptyCroper();
+        this.addCroppingEffect(); /* why me first to not effect btns call it x-index */
+        this.cropperCtx.beginPath();
+        this.cropperCtx.strokeStyle = this.croperColor;
+        this.cropperCtx.rect(this.cropperX, this.cropperY, this.cropperWidth, this.cropperHeight);
+        this.cropperCtx.stroke();        
+        this.addCroperBtns();
+        
+    }
+    emptyCroper() {
+        this.cropperCanvas.width = this.cropperCanvas.width;
+        this.cropperCtx.clearRect(0, 0, this.cropperCanvas.width, this.cropperCanvas.height);
+    }
+    btnActionController(btn) {
+        switch (btn) {
+            case 'topLeft':
+                break;
+            case 'topRight':
+                break;
+            case 'bottomRight':
+                break;
+            case 'bottomLeft':
+                break;
+            case 'topMiddle':
+                break;
+            case 'bottomMiddle':
+                break;
+            case 'middleRight':
+                break;
+            case 'middleLeft':
+                break; 
+            default:
+                break;
+        }
+    }
+    addEvents() {
+        this.fileUploader.addEventListener("change", (e) => (this.loadImageByFileUpload(e)));
+        this.cropperCanvas.addEventListener("mousedown", (e) => (this.mouseDownCroper(e)));
+        this.cropperCanvas.addEventListener("mousemove", (e) => (this.mouseMoveCroper(e)));
+        document.body.addEventListener("mouseup", (e) => (this.mouseRealseCroper(e)));
+    }
+}
+const imageCropper = new ImageCroper('canvasid', 'cropperid', 'imageLoader');
+//new ImageCroper('canvasid', 'cropper_id', 'croper_id');
+
+//new ImageCroper('canvasid', 'cropper_id', 'croper_id');
+</script>
+
+</body>
+</html>
