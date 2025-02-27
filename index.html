@@ -59,10 +59,10 @@ class ImageCroper {
             this.BtnCx = this.dWidth / 2;
             this.BtnCy = this.dHeight / 2;
             // croper style
-            this.croperColor = 'blue';
+            this.croperColor = 'rgb(12, 150, 150)';
             // croper dimensions squares (u can control size of dimensions squares)
             this.dColor = 'white';
-            this.dBackground = 'blue';
+            this.dBackground = 'rgb(12, 120, 220)';
             this.addEvents();
         } else {
             throw new Error('missing one of two required canvas or the file upload input id or invalid args');
@@ -273,6 +273,7 @@ class ImageCroper {
         } else if (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) {
             const eventType = this._cropingActionIndex === 5 ? 'dragCancel' : 'dragEnd'; 
             console.log(`Event: ${eventType}`);
+           
             this.resetDragData();
         }
         return false;
@@ -514,7 +515,8 @@ class ImageCroper {
         this.fileUploader.addEventListener("change", (e) => (this.loadImageByFileUpload(e)));
         this.cropperCanvas.addEventListener("mousedown", (e) => (this.mouseDownCroper(e)));
         this.cropperCanvas.addEventListener("mousemove", (e) => (this.mouseMoveCroper(e)));
-        document.body.addEventListener("mouseup", (e) => (this.mouseRealseCroper(e)));
+        /* small note about window and body, window is higher lvl so mouseup in browser tabs or even try iteditor cus frame it will counted but if body it only the the visibale part to now mouse relase catch in browser tabs or the iframes */
+        window.addEventListener("mouseup", (e) => (this.mouseRealseCroper(e)));
     }
 }
 const imageCropper = new ImageCroper('canvasid', 'cropperid', 'imageLoader');
