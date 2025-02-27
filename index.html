@@ -282,37 +282,57 @@ class ImageCroper {
     getMovementDiffrance(val1, val2) {
         const width = this.cropperCanvas.width;
         // this math fourmal to get 1 final diffreance number when + on the x and y will not exced width or lower 0 and also if within it will get the excat move and it done by math no math Max and min needed (note setCroperData handle but also for micro component valid i keep my nums ch also make sure oop nums is accurate even all actions correct before execute like draw
-        const diffreance = ((val2 >= width) ? ((val2 - width) - (((val2 - width) + val1) - width)) : ((val2 <= 0) ? -val1 : (val2 - val1)));
-        return Math.max(-width, Math.min(width, diffreance));
+        const diff = ((val2 >= width) ? ((val2 - width) - (((val2 - width) + val1) - width)) : ((val2 === 0) ? -val1 : ((val2 < 0) ? 0 : (val2 - val1))));
+        return Math.max(-width, Math.min(width, diff));
     }
-
-    dragAction(canvasXY) {
-       //getMovementDiffrance(70, 5555);
-       const x = parseInt(canvasXY.x);
-       const y = parseInt(canvasXY.y);
-       this.croperDragX2 = x;
-       this.croperDragY2 = y;
-       /* np - + i will addon that on the current y and x so it handle auto up and down*/
-       const diffrenaceX = this.getMovementDiffrance(this.croperDragX1, this.croperDragX2);
-       const diffrenaceY = this.getMovementDiffrance(this.croperDragY1, this.croperDragY2);
+    setDragCropData() {
+       /* this for smooth work with same inital drag and drawer and same drawing so it sumilate the move to the original x1,y1, x2, y2 and it do with simple 1 num for x and 1 for y both vales and also have limition so make sure no exced to nagtive value or bigger than width or bigger than height of canvas */
+       const width = this.cropperCanvas.width;
+       const height = this.cropperCanvas.height;
        
+       let diffrenaceX = this.getMovementDiffrance(this.croperDragX1, this.croperDragX2);
+       let diffrenaceY = this.getMovementDiffrance(this.croperDragY1, this.croperDragY2);
+       
+       /// if side top will exced the 0 
+       if ((this.croperRectX1+diffrenaceX) < 0) {
+            diffrenaceX = 0-this.croperRectX1;
+       }
+       // if side left will exced the 0
+       if ((this.croperRectY1+diffrenaceY) < 0) {
+            diffrenaceY = 0-this.croperRectY1;
+       }
+       // if move will exced width of canvas (note x2 define the exced width in 2d world right left, there are 2 d front back like pubg if 2d or counter strick if 2d or main car games race it 2d but it walk to front and back or shoter games
+       if ((this.croperRectX2+diffrenaceX) > width) {
+            const x2 = Math.min(width, Math.max(0, this.croperRectX2));
+            diffrenaceX = (width-x2);
+       }
+       
+       // if move will exced height of canvas
+       if ((this.croperRectY2+diffrenaceY) > height) {
+            // positive number within width (if need crop liner make it y1)
+            const y2 = Math.min(width, Math.max(0, this.croperRectY2));
+            diffrenaceY = (height-y2);
+       }
 
-       console.log('-'.repeat(30));
-       console.log(`this.croperRectY1:${this.croperRectY1}, diffrenaceX:${diffrenaceX}, diffrenaceY:${diffrenaceY}`);
+       
        this.croperRectX1 += diffrenaceX;
        this.croperRectY1 += diffrenaceY;
        this.croperRectX2 += diffrenaceX;
        this.croperRectY2 += diffrenaceY;
-       
+    }
+    dragAction(canvasXY) {     
+       const x = parseInt(canvasXY.x);
+       const y = parseInt(canvasXY.y);
+       this.croperDragX2 = x;
+       this.croperDragY2 = y;
+
+       this.setDragCropData();
        this.shouldInitalCroper();
        
-       // now after draw continues it set new step ready (so next move get 2 only)
        this.croperDragX1 = x;
        this.croperDragY1 = y;
        this.croperDragX2 = null;
        this.croperDragY2 = null;
-       
-       console.warn(`I will move now it valid drag start; ${this.croperDragX1}-to->${this.croperDragX2}=${diffrenaceX}, | ${this.croperDragY1}-to->${this.croperDragY2}=${diffrenaceY}`);
     }
     isCroperNumsValid() {
         const allAreNums = (!isNaN(parseFloat(this.croperRectX1)) && !isNaN(parseFloat(this.croperRectY1)) && !isNaN(parseFloat(this.croperRectX2)) && !isNaN(parseFloat(this.croperRectY2)));
