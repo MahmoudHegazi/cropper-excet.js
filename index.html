@@ -482,7 +482,8 @@ class ImageCroper {
         const ch = this.cropperCanvas.height;
         const cWCenter = this.cropperWidth / 2;
         const cHCenter = this.cropperHeight / 2;
-
+        //0it started 0and width
+        // but when right it need check now if exced as will be positive better no chicking
         this.dTopLeftX = Math.min(cw, (Math.max(0, this.cropperX - this.BtnCx)));
         this.dTopLeftY = Math.min(ch, (Math.max(0, this.cropperY - this.BtnCy)));
         this.dTopRightX = Math.min(cw, (Math.max(0, this.cropperX2 - this.BtnCx)));
