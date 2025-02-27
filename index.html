@@ -49,7 +49,8 @@ class ImageCroper {
             this.dBottomLeftX = -1;
             this.dBottomLeftY = -1;
 
-            this.frameId = null;
+            this.creationFrameId = null;
+            this.dragMoveFrameId = null;
 
             this.importantCursor = '';
             
@@ -171,10 +172,17 @@ class ImageCroper {
         this.dBottomLeftY = -1;
         
         
-        if (this.frameId) {
-            cancelAnimationFrame(this.frameId);
+        if (this.creationFrameId) {
+            cancelAnimationFrame(this.creationFrameId);
         }
-        this.frameId = null;
+        this.creationFrameId = null;
+        
+        if (this.dragMoveFrameId) {
+            cancelAnimationFrame(this.dragMoveFrameId);
+        }
+        this.dragMoveFrameId = null;
+        
+        
         this.emptyCroper();
     }
     resetDragData() {
@@ -185,6 +193,16 @@ class ImageCroper {
       this.croperDragX2 = null;
       this.croperDragY2 = null;
     }
+    shouldInitalCroperFrame(frameId) {
+       if (!this[frameId]) {
+           this[frameId] = requestAnimationFrame(() => {
+               const res = this.shouldInitalCroper();
+               this[frameId] = null;
+               return res;
+           });
+       }
+    }
+    
     mouseDownCroper(e) {
         const canvasXY = this.getCroperXY(e.clientX, e.clientY);
         const clickInsideCropper = this.isWithinCroper(canvasXY);
@@ -206,14 +224,10 @@ class ImageCroper {
 
             alert(`hello:whichBtnClicked clicked on action btn:${whichBtnClicked} ${this.cropingActionIndex}`);
         } else if (this.cropingActionIndex === 4 && clickInsideCropper) {
-            /* drag start check (drag restart) */
+            /* drag start */
             this._cropingActionIndex = 5;
             this.croperDragX1 = parseInt(canvasXY.x);
-            this.croperDragY1 = parseInt(canvasXY.y);      
-            //this.croperRectX2 = -1;
-            //this.croperRectY2 = -1;
-            
-            console.log(`hello:clickInsideCropper but not on btn so moving croper action ${this.cropingActionIndex} ${this.croperDragX1}, ${this.croperDragY1}`);
+            this.croperDragY1 = parseInt(canvasXY.y);
         } else {
             console.log(`so all here click not on croper or btn? sure clean it ${this.cropingActionIndex} ${whichBtnClicked} ${clickInsideCropper}`);
             return this.resetCropperAction();
@@ -229,13 +243,9 @@ class ImageCroper {
             //console.log("now user clicked and moved");
             this.croperRectX2 = parseInt(canvasXY.x);
             this.croperRectY2 = parseInt(canvasXY.y);
-            if (!this.frameId) {
-                this.frameId = requestAnimationFrame(() => {
-                    const res = this.shouldInitalCroper();
-                    this.frameId = null;
-                    return res;
-                });
-            }
+            // use request frame to delay to 60fpp delay abit not eachmove
+            this.shouldInitalCroperFrame('creationFrameId');
+    
         } else if (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) {
              // _cropingActionIndex is dragstart first move, cropingActionIndex is dragmove
              if (this._cropingActionIndex === 5) {
@@ -246,6 +256,16 @@ class ImageCroper {
              const validNums = this.isDragNumsValid();
              if (validNums) {
                  this.dragAction(canvasXY);
+                 
+            if (!this.frameId2) {
+                this.frameId2 = requestAnimationFrame(() => {
+                    const res = this.shouldInitalCroper();
+                    this.frameId2 = null;
+                    return res;
+                });
+            }
+            
+            
              } else {
                  // remove the drag if invalid nums
                  this.resetDragData();
@@ -327,7 +347,9 @@ class ImageCroper {
        this.croperDragY2 = y;
 
        this.setDragCropData();
-       this.shouldInitalCroper();
+       // use request frame to delay abit
+       this.shouldInitalCroperFrame('dragMoveFrameId');
+       
        
        this.croperDragX1 = x;
        this.croperDragY1 = y;
