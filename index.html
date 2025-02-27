@@ -333,12 +333,17 @@ class ImageCroper {
             const y2 = Math.min(width, Math.max(0, this.croperRectY2));
             diffrenaceY = (height-y2);
        }
-
+       
        
        this.croperRectX1 += diffrenaceX;
        this.croperRectY1 += diffrenaceY;
        this.croperRectX2 += diffrenaceX;
        this.croperRectY2 += diffrenaceY;
+       
+       
+       if (this.croperRectY2 > width) {
+         alert("a7a");
+       }
     }
     dragAction(canvasXY) {     
        const x = parseInt(canvasXY.x);
