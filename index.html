@@ -202,7 +202,7 @@ class ImageCroper {
             this.croperRectX1 = parseInt(canvasXY.x);
             this.croperRectY1 = parseInt(canvasXY.y);
             return this.cropingActionIndex;
-        } else if (whichBtnClicked) {
+        } else if (this.cropingActionIndex === 4 && whichBtnClicked) {
 
             alert(`hello:whichBtnClicked clicked on action btn:${whichBtnClicked} ${this.cropingActionIndex}`);
         } else if (this.cropingActionIndex === 4 && clickInsideCropper) {
