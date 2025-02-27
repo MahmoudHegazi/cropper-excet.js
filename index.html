@@ -276,8 +276,10 @@ class ImageCroper {
         if (this.cropingActionIndex >= 4) {
             const canvasXY = this.getCroperXY(e.clientX, e.clientY);
             const whichBtnClicked = this.getWhichBtn(canvasXY);
-            const clickInsideCropper = this.isWithinCroper(canvasXY);            
-            document.body.style.cursor = this.getCursorStyle([whichBtnClicked, clickInsideCropper]);
+            const clickInsideCropper = this.isWithinCroper(canvasXY);
+            const isGrapping = (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) ? 'grabbing' : '';
+            // think this it take the checks that excted to writen enum mouse move and it ordered by proirty and it keep move until get one valid crusor if all checks fail or no valid so it get default cursor set
+            document.body.style.cursor = this.getCursorStyle([isGrapping, whichBtnClicked, clickInsideCropper]);
         }
         return false;
     }
