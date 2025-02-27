@@ -63,6 +63,7 @@ class ImageCroper {
             // croper dimensions squares (u can control size of dimensions squares)
             this.dColor = 'white';
             this.dBackground = 'rgb(12, 120, 220)';
+            this.cropperEffectColor = 'rgba(0, 0, 0, 0.8)';
             this.addEvents();
         } else {
             throw new Error('missing one of two required canvas or the file upload input id or invalid args');
@@ -278,13 +279,26 @@ class ImageCroper {
         }
         return false;
     }
+    getMovementDiffrance(val1, val2) {
+        const width = this.cropperCanvas.width;
+        // this math fourmal to get 1 final diffreance number when + on the x and y will not exced width or lower 0 and also if within it will get the excat move and it done by math no math Max and min needed (note setCroperData handle but also for micro component valid i keep my nums ch also make sure oop nums is accurate even all actions correct before execute like draw
+        const diffreance = ((val2 >= width) ? ((val2 - width) - (((val2 - width) + val1) - width)) : ((val2 <= 0) ? -val1 : (val2 - val1)));
+        return Math.max(-width, Math.min(width, diffreance));
+    }
+
     dragAction(canvasXY) {
-       this.croperDragX2 = parseInt(canvasXY.x);
-       this.croperDragY2 = parseInt(canvasXY.y);
+       //getMovementDiffrance(70, 5555);
+       const x = parseInt(canvasXY.x);
+       const y = parseInt(canvasXY.y);
+       this.croperDragX2 = x;
+       this.croperDragY2 = y;
        /* np - + i will addon that on the current y and x so it handle auto up and down*/
-       const diffrenaceX = this.croperDragX2 - this.croperDragX1;
-       const diffrenaceY = this.croperDragY2 - this.croperDragY1;
+       const diffrenaceX = this.getMovementDiffrance(this.croperDragX1, this.croperDragX2);
+       const diffrenaceY = this.getMovementDiffrance(this.croperDragY1, this.croperDragY2);
        
+
+       console.log('-'.repeat(30));
+       console.log(`this.croperRectY1:${this.croperRectY1}, diffrenaceX:${diffrenaceX}, diffrenaceY:${diffrenaceY}`);
        this.croperRectX1 += diffrenaceX;
        this.croperRectY1 += diffrenaceY;
        this.croperRectX2 += diffrenaceX;
@@ -293,8 +307,8 @@ class ImageCroper {
        this.shouldInitalCroper();
        
        // now after draw continues it set new step ready (so next move get 2 only)
-       this.croperDragX1 = parseInt(canvasXY.x);
-       this.croperDragY1 = parseInt(canvasXY.y);
+       this.croperDragX1 = x;
+       this.croperDragY1 = y;
        this.croperDragX2 = null;
        this.croperDragY2 = null;
        
@@ -351,7 +365,7 @@ class ImageCroper {
     }
     addCroppingEffect() {
         //this.cropperCtx.globalAlpha = 0.5; (transparent for all)
-        this.cropperCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.cropperCtx.fillStyle = this.cropperEffectColor;
         this.cropperCtx.fillRect(0, 0, this.cropperCanvas.width, this.cropperCanvas.width);
         // Change composite mode to "cut out" this will remove the prev filling when fill again also good to remove effect
         this.cropperCtx.globalCompositeOperation = 'destination-out';
@@ -444,7 +458,10 @@ class ImageCroper {
         this.dMiddleRightY = Math.min(ch, (Math.max(0, (this.cropperY + cHCenter) - this.BtnCy)));
 
 
-
+//move x only and += diffreance x
+//move y only and += diffrence y
+//move xy and += diffranceX , += diffranceY
+//move xy and += diffranceY
 
         this.cropperCtx.beginPath();
         this.cropperCtx.strokeStyle = this.dColor;
