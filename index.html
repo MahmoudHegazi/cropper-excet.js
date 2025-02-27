@@ -340,10 +340,6 @@ class ImageCroper {
        this.croperRectX2 += diffrenaceX;
        this.croperRectY2 += diffrenaceY;
        
-       
-       if (this.croperRectY2 > width) {
-         alert("a7a");
-       }
     }
     dragAction(canvasXY) {     
        const x = parseInt(canvasXY.x);
@@ -588,5 +584,6 @@ const imageCropper = new ImageCroper('canvasid', 'cropperid', 'imageLoader');
 
 //new ImageCroper('canvasid', 'cropper_id', 'croper_id');
 </script>
+
 </body>
 </html>
