@@ -273,7 +273,8 @@ class ImageCroper {
         }
     }
     setNewResizeCords(obj) {
-        console.error(this.cropperX1, this.cropperY1, this.cropperX2, this.cropperY2);
+        // this dynamic take arg obj with cords only will changed , others will set same as it drawed , note i not direct edit this.cropperX etc it math after drawing for all croperRectX1 what edit to set new sizes
+
         if (obj.x1) {
             this.croperRectX1 = obj.x1;
         } else {
@@ -307,26 +308,32 @@ class ImageCroper {
         switch (this.currentResizeBtn) {
             case 'topLeft':
                 // note this prevert reversing direction so only left resize
-                newCords.x1 = (this.croperRectX2 >= canvasXY.x) ? canvasXY.x : this.croperRectX2;
-                newCords.y1 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
+                newCords.x1 = (canvasXY.x <= this.croperRectX2) ? canvasXY.x : this.croperRectX2;
+                newCords.y1 = (canvasXY.y <= this.croperRectY2) ? canvasXY.y : this.croperRectY2;
                 break;
             case 'topMiddle':
-                newCords.y1 = canvasXY.y;
+                newCords.y1 = (canvasXY.y <= this.croperRectY2) ? canvasXY.y : this.croperRectY2;
                 break;
             case 'topRight':
+                newCords.x2 = (canvasXY.x >= this.croperRectX1) ? canvasXY.x : this.croperRectX1;
+                newCords.y1 = (canvasXY.y <= this.croperRectY2) ? canvasXY.y : this.croperRectY2;
                 break;
             case 'middleRight':
-                valid = {x2: canvasXY.x};
+                newCords.x2 = (canvasXY.x >= this.croperRectX1) ? canvasXY.x : this.croperRectX1;
                 break;
             case 'bottomRight':
+                newCords.x2 = (canvasXY.x >= this.croperRectX1) ? canvasXY.x : this.croperRectX1;
+                newCords.y2 = (canvasXY.y >= this.croperRectY1) ? canvasXY.y : this.croperRectY1;
                 break;
             case 'bottomMiddle':
-            console.log("yabndel mtnka");
-                newCords.y2 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
+                newCords.y2 = (canvasXY.y >= this.croperRectY1) ? canvasXY.y : this.croperRectY1;
                 break;
             case 'bottomLeft':
+                newCords.x1 = (canvasXY.x <= this.croperRectX2) ? canvasXY.x : this.croperRectX2;
+                newCords.y2 = (canvasXY.y >= this.croperRectY1) ? canvasXY.y : this.croperRectY1;
                 break;
             case 'middleLeft':
+                newCords.x1 = (canvasXY.x <= this.croperRectX2) ? canvasXY.x : this.croperRectX2;
                 break;
             default:
                 valid = false;
@@ -335,14 +342,14 @@ class ImageCroper {
             // update cords need updates dynamic async with switch and good performance ever
         }
         // draw when valid and set any val why o
-        if (valid && (newCords.x1 || newCords.y1 || newCords.x2 || newCords.y2)) {
-
+        if ((newCords.x1 || newCords.y1 || newCords.x2 || newCords.y2)) {
             this.setNewResizeCords(newCords);
             // use request frame to delay abit
             this.shouldInitalCroperFrame('ResizeFrameId');
         } else {
             this.resetResize();
         }
+        return valid;
     }
     mouseMoveCroper(e) {
         /* get the xy related to the canvas and element so accurate ignore padding,margin height of screen etc */
@@ -497,7 +504,6 @@ class ImageCroper {
         }
     }
     shouldInitalCroper() {
-console.log('zz' , this.cropingActionIndex, this.isCroperNumsValid());
         if ((this.cropingActionIndex === 2 || this.cropingActionIndex === 3 || this.cropingActionIndex === 5 || this.cropingActionIndex === 6) && this.isCroperNumsValid()) {
             this.setCroperData();
             this.drawCroper();
