@@ -176,11 +176,6 @@ class ImageCroper {
         this.croperDragY1 = null;
         this.croperDragX2 = null;
         this.croperDragY2 = null;
-        /* final drawed croper */
-        this.cropperX = -1;
-        this.cropperY = -1;
-        this.cropperX2 = -1;
-        this.cropperY2 = -1;
         /* croper btns */
         this.dTopLeftX = -1;
         this.dTopLeftY = -1;
@@ -275,43 +270,45 @@ class ImageCroper {
             return this.resetCropperAction();
         }
     }
-    filterObjByValOrNull(obj) {
-       return Object.keys(obj).map((key)=>((obj[key]) ? key : false)).filter(Boolean).reduce((ac, key)=>{ ac[key] = obj[key]; return ac; }, {});
-    }
-    setResizeCords(newCords) {
-       const changed = 
-       let newCords = {x1: 1, y1: null, x2: null, y2: null};
+    setNewResizeCords(obj) {
+        if (obj.x1) {
+            this.croperRectX1 = obj.x1;
+        } else {
+            this.croperRectX1 = this.cropperX1;
+        }
+        if (obj.y1) {
+            this.croperRectY1 = obj.y1;
+        } else {
+            this.croperRectY1 = this.cropperY1;
+        }
+        
+        if (obj.x2) {
+            this.croperRectX2 = obj.x2;
+
+        } else {
+            this.croperRectX2 = this.cropperX2;
+        }
+        
+        if (obj.y2) {
+            this.croperRectY2 = obj.y2;
+
+        } else {
+            this.croperRectY2 = this.cropperY2;
+        }
 
     }
+
     resizeCropper(canvasXY) {
-        let newCords = {x1: null, y1: null, x2: null, y2: null};
-        /*
-                this.croperRectX1 = -1;
-        this.croperRectY1 = -1;
-        this.croperRectX2 = -1;
-        this.croperRectY2 = -1;
-        
-                this.cropperX = -1;
-        this.cropperY = -1;
-        this.cropperX2 = -1;
-        this.cropperY2 = -1;
-        
-        */
+        const newCords = {x1: null, y1: null, x2: null, y2: null};
+        let valid = true;
         switch (this.currentResizeBtn) {
             case 'topLeft':
                 // note this prevert reversing direction so only left resize
-
-                let x1 = (this.croperRectX2 >= canvasXY.x) ? canvasXY.x : this.croperRectX2;
-                
-                let x2 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
-                
-                this.croperRectX2 = this.cropperX2;
-                this.croperRectY2 = this.cropperY2;
-                newCords = {};
-                valid = true;
+                newCords.x1 = (this.croperRectX2 >= canvasXY.x) ? canvasXY.x : this.croperRectX2;
+                newCords.y1 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
                 break;
             case 'topMiddle':
-                valid = {y1: canvasXY.y};
+                newCords.y1 = canvasXY.y;
                 break;
             case 'topRight':
                 break;
@@ -326,15 +323,17 @@ class ImageCroper {
             case 'bottomLeft':
                 break;
             case 'middleLeft':
-                valid = {x1: canvasXY.x};
                 break;
             default:
+                valid = false;
                 break;
             
             // update cords need updates dynamic async with switch and good performance ever
         }
-        if (valid) {
-            
+        // draw when valid and set any val why o
+        if (valid && (newCords.x1 || newCords.y1 || newCords.x2 || newCords.y2)) {
+
+            this.setNewResizeCords(newCords);
             // use request frame to delay abit
             this.shouldInitalCroperFrame('ResizeFrameId');
         } else {
