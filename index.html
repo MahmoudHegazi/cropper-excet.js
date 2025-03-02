@@ -19,7 +19,9 @@
 
 /* thing to noted sqauers btns left and top only not exced and moved but right and down which also have the resizing behavior it btn exceed */
 
+// require dynamic detect if canvas as first arg so draw in canvas image else if div, set as background if imag set as src, but only if second arg is file input so allow upload image and set otherwise it not set the src or background or canvas image if second arg not provided as file input id
 
+// constructor([canvasId || divId || imgId], cropperCanvasId->bysystem, fileUploadId->[provided:user need imageCropper handle upload image and set it in the canvas or div or image else user control himself the setting of layer 1 image]) fit all uses, ex static images fixed need croped not changed or div  with other methods to update it or other lib so here croper for ex draw only layer2 and add his cropering and it dynamic just provid html ids and it detect what needed by type of elements ex canvas or src image or background div ImageCroper is smart to detect by only provided ids what he need and make it easy to use and included in any system
 class ImageCroper {
     constructor(canvasId, cropperCanvasId, fileUploadId) {
         const canvas = (canvasId && document.getElementById(canvasId)) ? document.getElementById(canvasId) : null;
