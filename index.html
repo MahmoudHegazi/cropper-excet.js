@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html>
 <body>
 
-<h1>JavaScript Strings</h1>
+<h1>CropperExact</h1>
 <h2><input type="file" id="imageLoader" name="imageLoader"/></h2>
 <!--  style="max-width:800px;max-height:600px;overflow:auto;"-->
 <div style="position:relative;">
@@ -37,11 +38,11 @@ class ImageCroper {
             this.croperRectX1 = -1;
             this.croperRectY1 = -1;
             this.croperRectX2 = -1;
-            this.croperRectY2 = -1;
+            this.croperRectY2 = -1;            
             // drag cords
             this.croperDragX1 = null;
             this.croperDragY1 = null;
-            
+
             // croper dimensions squares
             this.dTopLeftX = -1;
             this.dTopLeftY = -1;
@@ -54,10 +55,25 @@ class ImageCroper {
 
             this.creationFrameId = null;
             this.dragMoveFrameId = null;
-
-            this.importantCursor = '';
+            this.ResizeFrameId = null;
             
-            this.cursorMap = {grapReady: 'grab', grabbing: 'grabbing', topLeft: 'nw-resize', topRight: 'ne-resize', bottomRight: 'se-resize', bottomLeft: 'sw-resize', topMiddle: 'n-resize', bottomMiddle: 's-resize', middleRight: 'e-resize', middleLeft: 'w-resize' };
+            this.currentResizeBtn = null;
+            
+            this.defaultCursor = '';
+
+            this.cursorMap = {
+                grapReady: 'grab',
+                grabbing: 'grabbing',
+                topLeft: 'nw-resize',
+                topRight: 'ne-resize',
+                bottomRight: 'se-resize',
+                bottomLeft: 'sw-resize',
+                topMiddle: 'n-resize',
+                bottomMiddle: 's-resize',
+                middleRight: 'e-resize',
+                middleLeft: 'w-resize'
+            };
+            
             this.dWidth = 10;
             this.dHeight = 10;
             this.BtnCx = this.dWidth / 2;
@@ -100,14 +116,14 @@ class ImageCroper {
     get fileUploader() {
         return this._fileUploader;
     }
-    getCursorStyle(orderedActionResults=[]) {
-        for (let i=0; i<orderedActionResults.length; i++) {
-           const actionResult = orderedActionResults[i];
-           const hasProp = this.cursorMap.hasOwnProperty(actionResult) ? this.cursorMap[actionResult] : '';
-           if (hasProp) {
-              // now allow ordered actions so first is prority and also performance break and provide multiple unlimited actions to be checked cursor in order from first to last as it's z-index proity of returned with empty defult so no error typescript result too;
-              return hasProp;
-           }
+    getCursorStyle(orderedActionResults = []) {
+        for (let i = 0; i < orderedActionResults.length; i++) {
+            const actionResult = orderedActionResults[i];
+            const hasProp = this.cursorMap.hasOwnProperty(actionResult) ? this.cursorMap[actionResult] : '';
+            if (hasProp) {
+                // now allow ordered actions so first is prority and also performance break and provide multiple unlimited actions to be checked cursor in order from first to last as it's z-index proity of returned with empty defult so no error typescript result too;
+                return hasProp;
+            }
         }
         // the default crusor
         return this.defaultCrusor;
@@ -174,49 +190,68 @@ class ImageCroper {
         this.dBottomLeftX = -1;
         this.dBottomLeftY = -1;
         
+        this.currentResizeBtn = null;
         
+        
+
         if (this.creationFrameId) {
             cancelAnimationFrame(this.creationFrameId);
         }
         this.creationFrameId = null;
-        
+
         if (this.dragMoveFrameId) {
             cancelAnimationFrame(this.dragMoveFrameId);
         }
         this.dragMoveFrameId = null;
-        
-        
+
+        if (this.ResizeFrameId) {
+            cancelAnimationFrame(this.ResizeFrameId);
+        }
+        this.ResizeFrameId = null;
+
         this.emptyCroper();
+        
+        document.body.style.cursor = this.defaultCursor;
     }
     resetDragData() {
-      this.cropingActionIndex = 4;
-      this._cropingActionIndex = null;
-      this.croperDragX1 = null;
-      this.croperDragY1 = null;
-      this.croperDragX2 = null;
-      this.croperDragY2 = null;
+        this.cropingActionIndex = 4;
+        this._cropingActionIndex = null;
+        this.croperDragX1 = null;
+        this.croperDragY1 = null;
+        this.croperDragX2 = null;
+        this.croperDragY2 = null;
+    }
+    resetResize() {
+        this.cropingActionIndex = 4;
+        this.currentResizeBtn = null;
+        // not wait for mouse move new event inside canvas to update cursor
+        document.body.style.cursor = this.defaultCursor;
     }
     shouldInitalCroperFrame(frameId) {
-       if (!this[frameId]) {
-           this[frameId] = requestAnimationFrame(() => {
-               const res = this.shouldInitalCroper();
-               this[frameId] = null;
-               return res;
-           });
-       }
+        if (!this[frameId]) {
+            this[frameId] = requestAnimationFrame(() => {
+                const res = this.shouldInitalCroper();
+                this[frameId] = null;
+                return res;
+            });
+        }
     }
-    
+
     mouseDownCroper(e) {
         const canvasXY = this.getCroperXY(e.clientX, e.clientY);
         const clickInsideCropper = this.isWithinCroper(canvasXY);
         const whichBtnClicked = this.getWhichBtn(canvasXY);
-        
+
         // reset any dragging as mousedown is starter
-        if  (this.cropingActionIndex === 5 || this._cropingActionIndex === 5) {
+        if (this.cropingActionIndex === 5 || this._cropingActionIndex === 5) {
             this.resetDragData();
         }
-        
-        
+        // reset any resize on new mousedown (handle casese like alert)
+        if (this.cropingActionIndex === 6) {
+            this.resetResize();
+        }
+
+
         if (this.cropingActionIndex === 0) {
             this.resetCropperAction();
             this.cropingActionIndex = 1;
@@ -224,8 +259,11 @@ class ImageCroper {
             this.croperRectY1 = parseInt(canvasXY.y);
             return this.cropingActionIndex;
         } else if (this.cropingActionIndex === 4 && whichBtnClicked) {
-
-            alert(`hello:whichBtnClicked clicked on action btn:${whichBtnClicked} ${this.cropingActionIndex}`);
+            //ResizeFrameId
+            this.cropingActionIndex = 6;        
+            this.currentResizeBtn = whichBtnClicked;
+            this.resizeCropper(whichBtnClicked);
+            
         } else if (this.cropingActionIndex === 4 && clickInsideCropper) {
             /* drag start */
             this._cropingActionIndex = 5;
@@ -236,10 +274,35 @@ class ImageCroper {
             return this.resetCropperAction();
         }
     }
+    resizeCropper() {
+        let newCords = {x1:null, y2:null, x2:null, y2:null};
+        switch (this.currentResizeBtn) {
+            case 'topLeft':
+                break;
+            case 'topMiddle':
+                break;
+            case 'topRight':
+                break;
+            case 'middleRight':
+                break;
+            case 'bottomRight':
+                break;
+            case 'bottomMiddle':
+                break;
+            case 'bottomLeft':
+                break;
+            case 'middleLeft':
+                break;
+            default:
+                // if unknown button clear the resizing
+                this.resetResize();
+                break;
+        }
+    }
     mouseMoveCroper(e) {
         /* get the xy related to the canvas and element so accurate ignore padding,margin height of screen etc */
         const canvasXY = this.getCroperXY(e.clientX, e.clientY);
-        
+
         // sometimes u may on any move resize shape but not now
         if (this.cropingActionIndex === 1 || this.cropingActionIndex === 2) {
             this.cropingActionIndex = 2;
@@ -248,33 +311,34 @@ class ImageCroper {
             this.croperRectY2 = parseInt(canvasXY.y);
             // use request frame to delay to 60fpp delay abit not eachmove
             this.shouldInitalCroperFrame('creationFrameId');
-    
+
         } else if (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) {
-             // _cropingActionIndex is dragstart first move, cropingActionIndex is dragmove
-             if (this._cropingActionIndex === 5) {
-               /* this diffrenate the drag cancel and the dragend later */
-               this._cropingActionIndex = null;
-               this.cropingActionIndex = 5;
-             }
-             const validNums = this.isDragNumsValid();
-             if (validNums) {
-                 this.dragAction(canvasXY);
-                 
-            if (!this.frameId2) {
-                this.frameId2 = requestAnimationFrame(() => {
-                    const res = this.shouldInitalCroper();
-                    this.frameId2 = null;
-                    return res;
-                });
+            // _cropingActionIndex is dragstart first move, cropingActionIndex is dragmove
+            if (this._cropingActionIndex === 5) {
+                /* this diffrenate the drag cancel and the dragend later */
+                this._cropingActionIndex = null;
+                this.cropingActionIndex = 5;
             }
-            
-            
-             } else {
-                 // remove the drag if invalid nums
-                 this.resetDragData();
-             }
+            const validNums = this.isDragNumsValid();
+            if (validNums) {
+                this.dragAction(canvasXY);
+
+                if (!this.frameId2) {
+                    this.frameId2 = requestAnimationFrame(() => {
+                        const res = this.shouldInitalCroper();
+                        this.frameId2 = null;
+                        return res;
+                    });
+                }
+
+
+            } else {
+                // remove the drag if invalid nums
+                this.resetDragData();
+            }
         }
         
+
         // mouse move effect after croper created
         if (this.cropingActionIndex >= 4) {
             const canvasXY = this.getCroperXY(e.clientX, e.clientY);
@@ -282,7 +346,7 @@ class ImageCroper {
             const clickInsideCropper = this.isWithinCroper(canvasXY);
             const isGrapping = (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) ? 'grabbing' : '';
             // think this it take the checks that excted to writen enum mouse move and it ordered by proirty and it keep move until get one valid crusor if all checks fail or no valid so it get default cursor set
-            document.body.style.cursor = this.getCursorStyle([isGrapping, whichBtnClicked, clickInsideCropper]);
+            document.body.style.cursor = this.getCursorStyle([this.currentResizeBtn, isGrapping, whichBtnClicked, clickInsideCropper]);
         }
         return false;
     }
@@ -297,10 +361,13 @@ class ImageCroper {
             this.shouldInitalCroper();
             document.body.style.cursor = '';
         } else if (this._cropingActionIndex === 5 || this.cropingActionIndex === 5) {
-            const eventType = this._cropingActionIndex === 5 ? 'dragCancel' : 'dragEnd'; 
+            const eventType = this._cropingActionIndex === 5 ? 'dragCancel' : 'dragEnd';
             console.log(`Event: ${eventType}`);
-           
+
             this.resetDragData();
+        } else if (this.cropingActionIndex === 6) {
+            this.resetResize();
+            alert(`canceled resize ${this.cropingActionIndex}`);
         }
         return false;
     }
@@ -311,56 +378,56 @@ class ImageCroper {
         return Math.max(-width, Math.min(width, diff));
     }
     setDragCropData() {
-       /* this for smooth work with same inital drag and drawer and same drawing so it sumilate the move to the original x1,y1, x2, y2 and it do with simple 1 num for x and 1 for y both vales and also have limition so make sure no exced to nagtive value or bigger than width or bigger than height of canvas */
-       const width = this.cropperCanvas.width;
-       const height = this.cropperCanvas.height;
-       
-       let diffrenaceX = this.getMovementDiffrance(this.croperDragX1, this.croperDragX2);
-       let diffrenaceY = this.getMovementDiffrance(this.croperDragY1, this.croperDragY2);
-       
-       /// if side top will exced the 0 
-       if ((this.croperRectX1+diffrenaceX) < 0) {
-            diffrenaceX = 0-this.croperRectX1;
-       }
-       // if side left will exced the 0
-       if ((this.croperRectY1+diffrenaceY) < 0) {
-            diffrenaceY = 0-this.croperRectY1;
-       }
-       // if move will exced width of canvas (note x2 define the exced width in 2d world right left, there are 2 d front back like pubg if 2d or counter strick if 2d or main car games race it 2d but it walk to front and back or shoter games
-       if ((this.croperRectX2+diffrenaceX) > width) {
+        /* this for smooth work with same inital drag and drawer and same drawing so it sumilate the move to the original x1,y1, x2, y2 and it do with simple 1 num for x and 1 for y both vales and also have limition so make sure no exced to nagtive value or bigger than width or bigger than height of canvas */
+        const width = this.cropperCanvas.width;
+        const height = this.cropperCanvas.height;
+
+        let diffrenaceX = this.getMovementDiffrance(this.croperDragX1, this.croperDragX2);
+        let diffrenaceY = this.getMovementDiffrance(this.croperDragY1, this.croperDragY2);
+
+        /// if side top will exced the 0 
+        if ((this.croperRectX1 + diffrenaceX) < 0) {
+            diffrenaceX = 0 - this.croperRectX1;
+        }
+        // if side left will exced the 0
+        if ((this.croperRectY1 + diffrenaceY) < 0) {
+            diffrenaceY = 0 - this.croperRectY1;
+        }
+        // if move will exced width of canvas (note x2 define the exced width in 2d world right left, there are 2 d front back like pubg if 2d or counter strick if 2d or main car games race it 2d but it walk to front and back or shoter games
+        if ((this.croperRectX2 + diffrenaceX) > width) {
             const x2 = Math.min(width, Math.max(0, this.croperRectX2));
-            diffrenaceX = (width-x2);
-       }
-       
-       // if move will exced height of canvas
-       if ((this.croperRectY2+diffrenaceY) > height) {
+            diffrenaceX = (width - x2);
+        }
+
+        // if move will exced height of canvas
+        if ((this.croperRectY2 + diffrenaceY) > height) {
             // positive number within width (if need crop liner make it y1)
             const y2 = Math.min(width, Math.max(0, this.croperRectY2));
-            diffrenaceY = (height-y2);
-       }
-       
-       
-       this.croperRectX1 += diffrenaceX;
-       this.croperRectY1 += diffrenaceY;
-       this.croperRectX2 += diffrenaceX;
-       this.croperRectY2 += diffrenaceY;
-       
-    }
-    dragAction(canvasXY) {     
-       const x = parseInt(canvasXY.x);
-       const y = parseInt(canvasXY.y);
-       this.croperDragX2 = x;
-       this.croperDragY2 = y;
+            diffrenaceY = (height - y2);
+        }
 
-       this.setDragCropData();
-       // use request frame to delay abit
-       this.shouldInitalCroperFrame('dragMoveFrameId');
-       
-       
-       this.croperDragX1 = x;
-       this.croperDragY1 = y;
-       this.croperDragX2 = null;
-       this.croperDragY2 = null;
+
+        this.croperRectX1 += diffrenaceX;
+        this.croperRectY1 += diffrenaceY;
+        this.croperRectX2 += diffrenaceX;
+        this.croperRectY2 += diffrenaceY;
+
+    }
+    dragAction(canvasXY) {
+        const x = parseInt(canvasXY.x);
+        const y = parseInt(canvasXY.y);
+        this.croperDragX2 = x;
+        this.croperDragY2 = y;
+
+        this.setDragCropData();
+        // use request frame to delay abit
+        this.shouldInitalCroperFrame('dragMoveFrameId');
+
+
+        this.croperDragX1 = x;
+        this.croperDragY1 = y;
+        this.croperDragX2 = null;
+        this.croperDragY2 = null;
     }
     isCroperNumsValid() {
         const allAreNums = (!isNaN(parseFloat(this.croperRectX1)) && !isNaN(parseFloat(this.croperRectY1)) && !isNaN(parseFloat(this.croperRectX2)) && !isNaN(parseFloat(this.croperRectY2)));
@@ -370,7 +437,7 @@ class ImageCroper {
     }
     isDragNumsValid() {
         return (!isNaN(parseFloat(this.croperDragX1)) && !isNaN(parseFloat(this.croperDragY1)));
-        
+
     }
     isWithinCroper(canvasXY) {
         // check if user want do action on croper after created like resize or move and prevent recerating new croper if mousedown within created croper
@@ -507,10 +574,10 @@ class ImageCroper {
         this.dMiddleRightY = Math.min(ch, (Math.max(0, (this.cropperY + cHCenter) - this.BtnCy)));
 
 
-//move x only and += diffreance x
-//move y only and += diffrence y
-//move xy and += diffranceX , += diffranceY
-//move xy and += diffranceY
+        //move x only and += diffreance x
+        //move y only and += diffrence y
+        //move xy and += diffranceX , += diffranceY
+        //move xy and += diffranceY
 
         this.cropperCtx.beginPath();
         this.cropperCtx.strokeStyle = this.dColor;
