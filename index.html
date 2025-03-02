@@ -55,8 +55,9 @@ class ImageCroper {
 
             this.creationFrameId = null;
             this.dragMoveFrameId = null;
-            this.ResizeFrameId = null;
-            
+            this.ResizeFrameId = null;           
+        
+        
             this.currentResizeBtn = null;
             
             this.defaultCursor = '';
@@ -248,10 +249,10 @@ class ImageCroper {
         }
         // reset any resize on new mousedown (handle casese like alert)
         if (this.cropingActionIndex === 6) {
+          
             this.resetResize();
         }
-
-
+//alert(this.cropingActionIndex);  
         if (this.cropingActionIndex === 0) {
             this.resetCropperAction();
             this.cropingActionIndex = 1;
@@ -259,10 +260,10 @@ class ImageCroper {
             this.croperRectY1 = parseInt(canvasXY.y);
             return this.cropingActionIndex;
         } else if (this.cropingActionIndex === 4 && whichBtnClicked) {
+            console.log(whichBtnClicked);
             //ResizeFrameId
             this.cropingActionIndex = 6;        
             this.currentResizeBtn = whichBtnClicked;
-            this.resizeCropper(whichBtnClicked);
             
         } else if (this.cropingActionIndex === 4 && clickInsideCropper) {
             /* drag start */
@@ -274,29 +275,70 @@ class ImageCroper {
             return this.resetCropperAction();
         }
     }
-    resizeCropper() {
-        let newCords = {x1:null, y2:null, x2:null, y2:null};
+    filterObjByValOrNull(obj) {
+       return Object.keys(obj).map((key)=>((obj[key]) ? key : false)).filter(Boolean).reduce((ac, key)=>{ ac[key] = obj[key]; return ac; }, {});
+    }
+    setResizeCords(newCords) {
+       const changed = 
+       let newCords = {x1: 1, y1: null, x2: null, y2: null};
+
+    }
+    resizeCropper(canvasXY) {
+        let newCords = {x1: null, y1: null, x2: null, y2: null};
+        /*
+                this.croperRectX1 = -1;
+        this.croperRectY1 = -1;
+        this.croperRectX2 = -1;
+        this.croperRectY2 = -1;
+        
+                this.cropperX = -1;
+        this.cropperY = -1;
+        this.cropperX2 = -1;
+        this.cropperY2 = -1;
+        
+        */
         switch (this.currentResizeBtn) {
             case 'topLeft':
+                // note this prevert reversing direction so only left resize
+
+                let x1 = (this.croperRectX2 >= canvasXY.x) ? canvasXY.x : this.croperRectX2;
+                
+                let x2 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
+                
+                this.croperRectX2 = this.cropperX2;
+                this.croperRectY2 = this.cropperY2;
+                newCords = {};
+                valid = true;
                 break;
             case 'topMiddle':
+                valid = {y1: canvasXY.y};
                 break;
             case 'topRight':
                 break;
             case 'middleRight':
+                valid = {x2: canvasXY.x};
                 break;
             case 'bottomRight':
                 break;
             case 'bottomMiddle':
+                valid = {y2: canvasXY.y};
                 break;
             case 'bottomLeft':
                 break;
             case 'middleLeft':
+                valid = {x1: canvasXY.x};
                 break;
             default:
-                // if unknown button clear the resizing
-                this.resetResize();
                 break;
+            
+            // update cords need updates dynamic async with switch and good performance ever
+        }
+        if (valid) {
+            
+            // use request frame to delay abit
+            this.shouldInitalCroperFrame('ResizeFrameId');
+        } else {
+            this.resetResize();
         }
     }
     mouseMoveCroper(e) {
@@ -336,6 +378,9 @@ class ImageCroper {
                 // remove the drag if invalid nums
                 this.resetDragData();
             }
+        } else if (this.cropingActionIndex === 6) {
+           
+            this.resizeCropper(canvasXY);
         }
         
 
@@ -367,7 +412,6 @@ class ImageCroper {
             this.resetDragData();
         } else if (this.cropingActionIndex === 6) {
             this.resetResize();
-            alert(`canceled resize ${this.cropingActionIndex}`);
         }
         return false;
     }
@@ -450,7 +494,7 @@ class ImageCroper {
         }
     }
     shouldInitalCroper() {
-        if ((this.cropingActionIndex === 2 || this.cropingActionIndex === 3 || this.cropingActionIndex === 5) && this.isCroperNumsValid()) {
+        if ((this.cropingActionIndex === 2 || this.cropingActionIndex === 3 || this.cropingActionIndex === 5 || this.cropingActionIndex === 6) && this.isCroperNumsValid()) {
             this.setCroperData();
             this.drawCroper();
             if (this.cropingActionIndex === 3) {
