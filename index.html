@@ -18,6 +18,8 @@
 // note in exced width u check the last side of square not the last side of button so sending the last side is what make issue so buttun may need if last side on the right so it remove to inner so can crop full size and button not exist out as no out got me so logical no math issue can resize
 
 /* thing to noted sqauers btns left and top only not exced and moved but right and down which also have the resizing behavior it btn exceed */
+
+
 class ImageCroper {
     constructor(canvasId, cropperCanvasId, fileUploadId) {
         const canvas = (canvasId && document.getElementById(canvasId)) ? document.getElementById(canvasId) : null;
@@ -271,15 +273,16 @@ class ImageCroper {
         }
     }
     setNewResizeCords(obj) {
+        console.error(this.cropperX1, this.cropperY1, this.cropperX2, this.cropperY2);
         if (obj.x1) {
             this.croperRectX1 = obj.x1;
         } else {
-            this.croperRectX1 = this.cropperX1;
+            this.croperRectX1 = this.cropperX;
         }
         if (obj.y1) {
             this.croperRectY1 = obj.y1;
         } else {
-            this.croperRectY1 = this.cropperY1;
+            this.croperRectY1 = this.cropperY;
         }
         
         if (obj.x2) {
@@ -318,7 +321,8 @@ class ImageCroper {
             case 'bottomRight':
                 break;
             case 'bottomMiddle':
-                valid = {y2: canvasXY.y};
+            console.log("yabndel mtnka");
+                newCords.y2 = (this.croperRectY2 >= canvasXY.y) ? canvasXY.y : this.croperRectY2;
                 break;
             case 'bottomLeft':
                 break;
@@ -493,9 +497,11 @@ class ImageCroper {
         }
     }
     shouldInitalCroper() {
+console.log('zz' , this.cropingActionIndex, this.isCroperNumsValid());
         if ((this.cropingActionIndex === 2 || this.cropingActionIndex === 3 || this.cropingActionIndex === 5 || this.cropingActionIndex === 6) && this.isCroperNumsValid()) {
             this.setCroperData();
             this.drawCroper();
+            
             if (this.cropingActionIndex === 3) {
                 // only on mouse relase set it ready for restart
                 this.cropingActionIndex = 4;
@@ -518,6 +524,7 @@ class ImageCroper {
             this.cropperHeight = biggestY2 - smallestY1;
             this.cropperX2 = this.cropperX + this.cropperWidth;
             this.cropperY2 = this.cropperY + this.cropperHeight;
+            console.warn(this.cropperX, this.cropperY, this.cropperX2, this.cropperY2);
             // alert("hi");
         }
     }
@@ -698,7 +705,9 @@ class ImageCroper {
 const imageCropper = new ImageCroper('canvasid', 'cropperid', 'imageLoader');
 //new ImageCroper('canvasid', 'cropper_id', 'croper_id');
 
-//new ImageCroper('canvasid', 'cropper_id', 'croper_id');
+//new ImageCroper('canvasid', 'cropper_id', 'croper_id');q
+
+
 </script>
 
 </body>
